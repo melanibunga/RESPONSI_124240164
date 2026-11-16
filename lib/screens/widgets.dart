@@ -1,40 +1,24 @@
 import 'package:flutter/material.dart';
 
-import '../models/character.dart';
+import '../models/article.dart';
 import '../theme.dart';
 
-Color statusColor(String status) {
-  switch (status.toLowerCase()) {
-    case 'alive':
-      return const Color(0xFF2FBF71);
-    case 'dead':
-      return AppColors.danger;
-    default:
-      return const Color(0xFFA0A396);
-  }
-}
-
-class StatusBadge extends StatelessWidget {
-  final String status;
-  final TextStyle? style;
-  const StatusBadge(this.status, {super.key, this.style});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = statusColor(status);
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(color: c, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 6),
-        Text(status, style: style),
-      ],
-    );
-  }
+/// Snackbar bookmark: hijau kalau ditambahkan, merah kalau dihapus.
+void showBookmarkSnackBar(
+  BuildContext context, {
+  required bool added,
+  required String title,
+  SnackBarAction? action,
+}) {
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(SnackBar(
+      backgroundColor: added ? Colors.green.shade700 : Colors.red.shade700,
+      content: Text(added
+          ? '$title ditambahkan ke bookmark'
+          : '$title dihapus dari bookmark'),
+      action: action,
+    ));
 }
 
 class ErrorView extends StatelessWidget {
@@ -75,39 +59,54 @@ class ErrorView extends StatelessWidget {
   }
 }
 
-/// Foto karakter berbentuk kotak membulat.
-class CharacterAvatar extends StatelessWidget {
+/// Gambar berita berbentuk kotak membulat (dengan loading & fallback).
+class ArticleImage extends StatelessWidget {
   final String url;
-  final double size;
-  const CharacterAvatar({super.key, required this.url, this.size = 60});
+  final double? width;
+  final double height;
+  final double radius;
+  const ArticleImage({
+    super.key,
+    required this.url,
+    this.width,
+    this.height = 72,
+    this.radius = 14,
+  });
+
+  Widget _placeholder(IconData icon) => Container(
+        width: width,
+        height: height,
+        color: AppColors.tint,
+        child: Icon(icon, color: AppColors.muted),
+      );
 
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
-      child: Image.network(
-        url,
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Container(
-          width: size,
-          height: size,
-          color: AppColors.tint,
-          child: const Icon(Icons.person, color: AppColors.muted),
-        ),
-      ),
+      borderRadius: BorderRadius.circular(radius),
+      child: url.isEmpty
+          ? _placeholder(Icons.image_not_supported_outlined)
+          : Image.network(
+              url,
+              width: width,
+              height: height,
+              fit: BoxFit.cover,
+              loadingBuilder: (context, child, progress) =>
+                  progress == null ? child : _placeholder(Icons.image_outlined),
+              errorBuilder: (_, __, ___) =>
+                  _placeholder(Icons.broken_image_outlined),
+            ),
     );
   }
 }
 
-/// Tombol hati persegi membulat: aktif = hijau zaitun + hati lime.
-class FavSquareButton extends StatelessWidget {
+/// Tombol bookmark persegi membulat: aktif = hijau zaitun + ikon lime.
+class BookmarkButton extends StatelessWidget {
   final bool active;
   final VoidCallback onPressed;
   final String? tooltip;
   final double size;
-  const FavSquareButton({
+  const BookmarkButton({
     super.key,
     required this.active,
     required this.onPressed,
@@ -130,7 +129,7 @@ class FavSquareButton extends StatelessWidget {
           width: size,
           height: size,
           child: Icon(
-            active ? Icons.favorite : Icons.favorite_border,
+            active ? Icons.bookmark : Icons.bookmark_border,
             size: 19,
             color: active ? AppColors.lime : AppColors.muted,
           ),
@@ -141,14 +140,14 @@ class FavSquareButton extends StatelessWidget {
   }
 }
 
-/// Kartu karakter: foto, tag spesies, nama, status, dan widget di kanan.
-class CharacterCard extends StatelessWidget {
-  final Character character;
+/// Kartu berita: gambar, tanggal, judul, sumber berita, dan widget di kanan.
+class ArticleCard extends StatelessWidget {
+  final Article article;
   final Widget trailing;
   final VoidCallback onTap;
-  const CharacterCard({
+  const ArticleCard({
     super.key,
-    required this.character,
+    required this.article,
     required this.trailing,
     required this.onTap,
   });
@@ -164,7 +163,7 @@ class CharacterCard extends StatelessWidget {
           padding: const EdgeInsets.all(10),
           child: Row(
             children: [
-              CharacterAvatar(url: character.image),
+              ArticleImage(url: article.imageUrl, width: 80, height: 80),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -179,7 +178,7 @@ class CharacterCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        character.tgl_publikasi,
+                        article.formattedDate,
                         style: const TextStyle(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w500,
@@ -189,8 +188,8 @@ class CharacterCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      character.judul_berita,
-                      maxLines: 1,
+                      article.title,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 15,
@@ -199,10 +198,21 @@ class CharacterCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    StatusBadge(
-                      character.sumber_berita,
-                      style: const TextStyle(
-                          fontSize: 12, color: AppColors.muted),
+                    Row(
+                      children: [
+                        const Icon(Icons.public,
+                            size: 14, color: AppColors.muted),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            article.newsSite,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                fontSize: 12, color: AppColors.muted),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

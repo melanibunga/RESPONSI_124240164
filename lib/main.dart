@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-// import 'package:resp_12424016/screens/home_screen.dart';
-
 import 'screens/login_screen.dart';
-import 'screens/main_shell.dart';
+import 'screens/home_screen.dart';
 import 'services/auth_service.dart';
-import 'services/favorites_store.dart';
+import 'services/bookmark_store.dart';
 import 'theme.dart';
 
 Future<void> main() async {
@@ -12,7 +10,7 @@ Future<void> main() async {
   // Cek sesi login yang tersimpan di Shared Preferences
   final user = await AuthService.currentUser();
   if (user != null) {
-    await FavoritesStore.instance.load(user);
+    await BookmarkStore.instance.load(user);
   }
   runApp(MyApp(startLoggedIn: user != null));
 }
@@ -28,7 +26,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
       // Halaman utama hanya bisa diakses setelah login
-      home: startLoggedIn ? const MainShell() : const LoginScreen(),
+      home: startLoggedIn ? const HomeScreen() : const LoginScreen(),
     );
   }
 }

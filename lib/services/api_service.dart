@@ -4,8 +4,7 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
-import '../models/character.dart';
-// import '../models/episode.dart';
+import '../models/article.dart';
 
 class ApiException implements Exception {
   final String message;
@@ -14,24 +13,21 @@ class ApiException implements Exception {
   String toString() => message;
 }
 
-class CharacterPage {
-  final List<Character> characters;
+class ArticlePage {
+  final List<Article> articles;
   final bool hasNext;
-  CharacterPage(this.characters, this.hasNext);
+  ArticlePage(this.articles, this.hasNext);
 }
 
 class ApiService {
-  static const _base = 'https://api.spaceflightnewsapi.net/v4/articles';
+  static const _base = 'https://api.spaceflightnewsapi.net/v4';
 
-  /// Return null kalau 404 dan [notFoundIsEmpty] true
-  /// (API mengembalikan 404 untuk hasil filter/pencarian kosong).
-  static Future<Map<String, dynamic>?> _get(
-    Uri uri, {
-    bool notFoundIsEmpty = false,
-  }) async {
+  /// Jumlah berita per halaman (soal: minimal 10).
+  static const pageSize = 10;
+
+  static Future<Map<String, dynamic>> _get(Uri uri) async {
     try {
       final res = await http.get(uri).timeout(const Duration(seconds: 15));
-      if (res.statusCode == 404 && notFoundIsEmpty) return null;
       if (res.statusCode != 200) {
         throw ApiException('Server bermasalah (kode ${res.statusCode})');
       }
@@ -49,43 +45,37 @@ class ApiService {
     }
   }
 
-  /// GET /character  |  /character?sumber_berita=alive  |  &judul_berita=rick
-  static Future<CharacterPage> fetchCharacters({
+  /// GET /articles/?limit=10&offset=0&news_site=NASA&search=mars
+  static Future<ArticlePage> fetchArticles({
     int page = 1,
-    String? sumber_berita,
-    String? judul_berita,
+    String? newsSite,
+    String? search,
   }) async {
-    final params = <String, String>{'page': '$page'};
-    if (sumber_berita != null && sumber_berita.isNotEmpty) params['sumber_berita'] = sumber_berita;
-    if (judul_berita != null && judul_berita.trim().isNotEmpty) params['judul_berita'] = judul_berita.trim();
+    final params = <String, String>{
+      'limit': '$pageSize',
+      'offset': '${(page - 1) * pageSize}',
+      'ordering': '-published_at',
+    };
+    if (newsSite != null && newsSite.isNotEmpty) params['news_site'] = newsSite;
+    if (search != null && search.trim().isNotEmpty) {
+      params['search'] = search.trim();
+    }
 
-    final uri = Uri.parse('$_base/character').replace(queryParameters: params);
-    final data = await _get(uri, notFoundIsEmpty: true);
-    if (data == null) return CharacterPage([], false);
+    final uri =
+        Uri.parse('$_base/articles/').replace(queryParameters: params);
+    final data = await _get(uri);
 
     final results = (data['results'] as List)
-        .map((e) => Character.fromJson(e as Map<String, dynamic>))
+        .map((e) => Article.fromJson(e as Map<String, dynamic>))
         .toList();
-    final hasNext = (data['info'] as Map<String, dynamic>)['next'] != null;
-    return CharacterPage(results, hasNext);
+    return ArticlePage(results, data['next'] != null);
   }
 
-  /// GET /character/{id}
-  static Future<Character> fetchCharacter(int id) async {
-    final data = await _get(Uri.parse('$_base/character/$id'));
-    return Character.fromJson(data!);
+  /// GET /info -> daftar semua news site untuk fitur filter.
+  static Future<List<String>> fetchNewsSites() async {
+    final data = await _get(Uri.parse('$_base/info/'));
+    final sites = (data['news_sites'] as List).map((e) => e.toString()).toList();
+    sites.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    return sites;
   }
-
-  // /// GET /episode (semua halaman digabung)
-  // static Future<List<Episode>> fetchEpisodes() async {
-  //   final all = <Episode>[];
-  //   String? next = '$_base/episode';
-  //   while (next != null) {
-  //     final data = await _get(Uri.parse(next));
-  //     all.addAll((data!['results'] as List)
-  //         .map((e) => Episode.fromJson(e as Map<String, dynamic>)));
-  //     next = (data['info'] as Map<String, dynamic>)['next'] as String?;
-  //   }
-  //   return all;
-  // }
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
-import 'main_shell.dart';
+import 'home_screen.dart';
 import '../theme.dart';
 import 'register_screen.dart';
 
@@ -40,7 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const MainShell()),
+      MaterialPageRoute(builder: (_) => const HomeScreen()),
     );
   }
 
@@ -82,7 +82,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ?.copyWith(fontWeight: FontWeight.bold),
                     ),
                     Text(
-                      'News Explorer',
+                      'Jelajahi berita eksplorasi luar angkasa',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: cs.onSurfaceVariant),
                     ),

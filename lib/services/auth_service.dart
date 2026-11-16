@@ -4,7 +4,7 @@ import 'package:crypto/crypto.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'database_helper.dart';
-import 'favorites_store.dart';
+import 'bookmark_store.dart';
 
 /// Register/login memakai local database (SQLite),
 /// sedangkan status sesi login disimpan di Shared Preferences.
@@ -30,7 +30,7 @@ class AuthService {
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_sessionKey, u);
-    await FavoritesStore.instance.load(u);
+    await BookmarkStore.instance.load(u);
     return null;
   }
 
@@ -42,6 +42,6 @@ class AuthService {
   static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_sessionKey);
-    FavoritesStore.instance.clear();
+    BookmarkStore.instance.clear();
   }
 }

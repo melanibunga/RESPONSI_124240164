@@ -1,5 +1,5 @@
-name: rick_morty_explorer
-description: Rick & Morty Character Explorer - Responsi Mobile
+name: spacenews_explorer
+description: SpaceNews Explorer - Responsi Mobile
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -15,6 +15,7 @@ dependencies:
   sqflite: ^2.3.0
   path: ^1.9.0
   crypto: ^3.0.3
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:
